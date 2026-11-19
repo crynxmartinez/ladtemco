@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build:demos": "node designs/admin-review-v2/export-review.mjs --public && node designs/member-review/build.mjs",
+    "prebuild": "npm run build:demos",
+    "predev": "npm run build:demos",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

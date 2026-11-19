@@ -1,0 +1,45 @@
+[hidden]{display:none!important}
+button:hover,.button:hover{filter:brightness(.96)}
+.brand b{word-break:break-word}
+.tabs button,.row-action,.action-entry{appearance:none;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.tabs button{border-bottom:2px solid transparent;padding:8px 0 10px;color:var(--muted);font-size:13px;font-weight:650}
+.tabs button[aria-pressed=true]{color:var(--green);border-bottom-color:var(--green)}
+.row-action{white-space:nowrap;padding:4px 0}
+.action-entry{width:100%;border-bottom:1px solid var(--line)}
+.action-entry:hover,.option-list button:hover{background:var(--subtle)}
+.action-entry small,.action-entry strong{display:block}
+.empty{text-align:center;padding:30px 12px;color:var(--muted)}
+.scrim{position:fixed;inset:0;z-index:10;background:rgba(8,21,16,.58);display:grid;place-items:center;padding:18px}
+.dialog{width:min(560px,100%);max-height:calc(100vh - 36px);display:flex;flex-direction:column;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 20px 65px #071a133d}
+.dialog header{display:flex;align-items:start;justify-content:space-between;gap:18px;padding:22px 24px 17px;border-bottom:1px solid var(--line)}
+.dialog h2{font-size:26px;letter-spacing:-.035em;line-height:1.12}
+.kicker{font-size:11px;font-weight:720;letter-spacing:.08em;text-transform:uppercase;color:var(--green);margin-bottom:7px}
+.dialog-body{padding:20px 24px;overflow:auto;min-height:0}
+.dialog footer{padding:14px 22px;background:var(--bg);display:flex;align-items:center;justify-content:flex-end;gap:9px;border-top:1px solid var(--line);flex-wrap:wrap}
+.dialog footer .dismiss{margin-right:auto}
+.close-x{border:1px solid var(--line);border-radius:7px;background:var(--subtle);width:33px;height:33px;color:var(--muted);font:23px/1 sans-serif}
+.field{display:block;margin-top:13px}
+.field span{font-size:13px;font-weight:690;display:block;margin-bottom:5px}
+.field input,.field select,.field textarea{display:block;border:1px solid var(--line);border-radius:6px;padding:9px 11px;background:var(--bg);color:var(--ink);width:100%;font:14px/1.35 'Segoe UI',sans-serif;min-height:39px}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--green);outline-offset:1px}
+.field input::placeholder,.field textarea::placeholder{color:var(--muted);opacity:.83}
+.field small{font-size:12px}
+.form-intro,.lead{margin-bottom:14px;font-size:14px;line-height:1.5;color:var(--muted)}
+.form-error{background:var(--red-bg);color:var(--red);margin-top:12px;padding:9px 11px;border-radius:5px}
+.option-list{display:grid;gap:6px}
+.option-list button{width:100%;text-align:left;padding:10px 14px;border:1px solid var(--line);border-radius:7px;background:var(--surface);display:flex;justify-content:space-between}
+.option-list button[aria-pressed=true]{background:var(--soft);color:var(--green);font-weight:700;border-color:var(--green)}
+.detail-block{margin:0 0 16px}
+.detail-block h3{margin-bottom:8px}
+.detail-block li,.agenda li{margin:6px 0}
+.dialog dl:last-child,.detail-block:last-child,.dialog .lead:last-child{margin-bottom:0}
+.dialog dd{max-width:65%;overflow-wrap:anywhere}
+.mini-table{overflow-x:auto;border:1px solid var(--line);border-radius:7px}
+.mini-table td,.mini-table th{padding:8px 10px;font-size:12px;white-space:normal}
+.mini-table td:last-child{width:auto}
+.result-icon{width:44px;height:44px;display:grid;place-items:center;color:var(--green);background:var(--soft);border-radius:50%;margin-bottom:12px}
+.result-icon svg{width:23px;height:23px}
+.amount{font-size:32px;font-weight:720;color:var(--green);margin-bottom:4px}
+body.modal-open{overflow:hidden}
+#announcement:not(:empty):not([hidden]){position:fixed;z-index:12;bottom:24px;right:24px;max-width:400px;border:1px solid var(--green);background:var(--surface);color:var(--ink);padding:12px 18px;border-radius:9px;box-shadow:var(--shadow)}
+@media(max-width:680px){.dialog header,.dialog-body{padding:15px}.dialog footer{padding:12px}.scrim{padding:9px}.dialog{max-height:calc(100dvh - 18px)}.brand b{font-size:14px}}
