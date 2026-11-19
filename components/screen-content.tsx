@@ -1,0 +1,74 @@
+"use client";
+
+import { AlertTriangle, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronRight, CircleDollarSign, Clock3, Download, FileCheck2, FileText, Filter, History, LockKeyhole, Plus, Search, ShieldCheck, Users } from "lucide-react";
+
+type Summary = Record<string, number | string>;
+const money = (centavos: number) => new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 }).format(centavos / 100);
+
+const memberTitles: Record<string, [string, string]> = {
+  dashboard: ["Good morning, Maria", "Here’s your cooperative overview"], contributions: ["My Contributions", "Review your posted contributions and receipts"],
+  "share-capital": ["Share Capital", "Your ownership contribution and build-up progress"], "fund-transparency": ["Fund Transparency", "Privacy-safe cooperative fund utilization"],
+  projects: ["Projects & Liquidations", "Published project activity and utilization"], documents: ["Documents Library", "Reports and documents authorized for members"],
+  meetings: ["Meetings & Resolutions", "Governance records and meeting schedules"], profile: ["Profile & Security", "Manage contact details and account security"],
+};
+const adminTitles: Record<string, [string, string]> = {
+  overview: ["Administration Overview", "Financial and operational status"], members: ["Member Directory", "Find and review cooperative members"],
+  contributions: ["Contributions Register", "Record, verify, and review member contributions"], "share-capital": ["Share Capital Register", "Member capital, shares, and adjustments"],
+  funds: ["Funds & Budgets", "Approved budgets and utilization"], expenses: ["Expenses & Advances", "Requests, advances, and reimbursements"],
+  liquidations: ["Liquidations Register", "Monitor evidence, aging, and verification"], approvals: ["Approvals", "Requests assigned to your individual account"],
+  reports: ["Reports & Reconciliation", "Financial reports and discrepancy review"], "meetings-documents": ["Meetings & Documents", "Governance publishing and document control"],
+  "audit-trail": ["Audit Trail", "Immutable action and correction history"], "users-roles": ["Users & Roles", "Individual accounts and access control"], settings: ["Settings", "Cooperative, accounting, and security configuration"],
+};
+
+const adminRows: Record<string, string[][]> = {
+  members: [["LAD-0241","Maria S. Dela Cruz","Active","₱18,000"],["LAD-0198","Jose M. Reyes","Active","₱15,000"],["LAD-0311","Carla P. Villanueva","Pending","₱5,000"]],
+  contributions: [["CON-2026-0041","Maria S. Dela Cruz","Monthly","₱500"],["CON-2026-0040","Jose M. Reyes","Monthly","₱500"],["CON-2026-0039","Carla Villanueva","Special","₱2,500"]],
+  "share-capital": [["LAD-0241","180 shares","₱18,000","Eligible"],["LAD-0198","150 shares","₱15,000","Eligible"],["LAD-0311","50 shares","₱5,000","Incomplete"]],
+  funds: [["Teacher Development","₱250,000","₱180,900","Approved"],["Member Welfare","₱400,000","₱310,000","Approved"],["Community Outreach","₱300,000","₱220,000","Ongoing"]],
+  expenses: [["ADV-2026-0009","Training materials","₱50,000","For Review"],["EXP-2026-0032","Office supplies","₱7,800","Approved"],["REI-2026-0018","Travel","₱4,250","Returned"]],
+  liquidations: [["LIQ-2026-014","Training program","₱50,000","For Verification"],["LIQ-2026-013","Member welfare","₱25,000","Returned"],["LIQ-2026-012","Outreach","₱30,000","Liquidated"]],
+  approvals: [["Expense","ADV-2026-0009","₱50,000","High priority"],["Liquidation","LIQ-2026-014","₱50,000","Due in 2d"],["Membership","MEM-2026-019","—","For Review"]],
+};
+
+export function ScreenContent({ portal, screen, databaseSummary }: { portal: "member" | "admin"; screen: string; databaseSummary: Summary }) {
+  const [title, subtitle] = (portal === "member" ? memberTitles[screen] : adminTitles[screen]) ?? ["Ladtemco", "Cooperative Management System"];
+  return <>
+    <div className="page-heading"><div><p className="eyebrow">{portal === "member" ? "MEMBER" : "ADMIN"} · {screen.replaceAll("-", " ")}</p><h1>{title}</h1><p>{subtitle}</p></div><div className="heading-actions"><button className="secondary-button"><Download size={17}/> Export</button>{portal === "admin" && <button className="primary-button small"><Plus size={17}/> New record</button>}</div></div>
+    {portal === "member" ? <MemberView screen={screen} db={databaseSummary}/> : <AdminView screen={screen} db={databaseSummary}/>} 
+  </>;
+}
+
+function Metric({ label, value, tone = "green", icon: Icon = CircleDollarSign }: { label: string; value: string; tone?: string; icon?: typeof CircleDollarSign }) { return <article className={`metric ${tone}`}><span><Icon/></span><div><small>{label}</small><strong>{value}</strong></div></article>; }
+
+function MemberView({ screen, db }: { screen: string; db: Summary }) {
+  if (screen === "profile") return <Profile/>;
+  if (screen === "documents") return <Documents/>;
+  if (screen === "meetings") return <Meetings/>;
+  if (screen === "contributions") return <><div className="metrics"><Metric label="Total contributed" value="₱24,500"/><Metric label="Records in local DB" value={String(db.contributionCount)} tone="blue" icon={FileCheck2}/><Metric label="Latest payment" value="Dec 10, 2026" tone="orange" icon={CalendarDays}/></div><DataPanel title="Contribution history" rows={[["Dec 10, 2026","DEMO-CON-2026-005","Monthly contribution","₱500","Posted"],["Nov 10, 2026","DEMO-CON-2026-004","Monthly contribution","₱500","Posted"],["Oct 10, 2026","DEMO-CON-2026-003","Monthly contribution","₱500","Posted"]]}/></>;
+  if (screen === "share-capital") return <><div className="metrics"><Metric label="Current share capital" value={money(Number(db.shareCapital))}/><Metric label="Subscribed shares" value="180 shares" tone="blue"/><Metric label="Build-up goal" value="75%" tone="orange"/></div><ProgressPanel title="Capital build-up" current="₱18,000" total="₱24,000" percent={75}/><DataPanel title="Share transaction history" rows={[["Jan 15, 2026","Share contribution","30 shares","₱3,000","Posted"],["Oct 10, 2025","Patronage capitalization","5 shares","₱500","Posted"]]}/></>;
+  if (screen === "fund-transparency" || screen === "projects") return <FundView detail={screen === "projects"}/>;
+  return <><div className="metrics"><Metric label="Total contributions" value="₱24,500"/><Metric label="Share capital" value="₱18,000" tone="orange"/><Metric label="Patronage refund" value="₱2,140" tone="blue"/><Metric label="Member since" value="2019" tone="soft" icon={CalendarDays}/></div><div className="dashboard-grid"><ProgressPanel title="Fund transparency" current="₱940,500 utilized" total="₱1,250,000 approved" percent={75.2}/><Activity/></div></>;
+}
+
+function AdminView({ screen, db }: { screen: string; db: Summary }) {
+  if (screen === "settings") return <SettingsView/>;
+  if (screen === "users-roles") return <UsersRoles/>;
+  if (screen === "audit-trail") return <AuditTrail/>;
+  if (screen === "reports") return <Reports/>;
+  if (screen === "meetings-documents") return <Meetings admin/>;
+  const rows = adminRows[screen];
+  return <><div className="metrics"><Metric label={screen === "overview" ? "Active members" : "Total records"} value={screen === "overview" ? "286" : String(db.members ?? 286)} icon={Users}/><Metric label="Collections this month" value="₱184,750" tone="blue"/><Metric label="Pending review" value={String(db.pending ?? 7)} tone="orange" icon={Clock3}/><Metric label="Audit status" value="Tracked" tone="soft" icon={ShieldCheck}/></div>{screen === "overview" ? <div className="dashboard-grid"><ProgressPanel title="Fund utilization" current="₱940,500 utilized" total="₱1,250,000 approved" percent={75.2}/><Activity admin/></div> : <><Toolbar/><DataPanel title={adminTitles[screen]?.[0] ?? "Records"} rows={rows ?? [["REQ-2026-014","Teacher Development","₱18,450","For Review"],["REQ-2026-013","Member Welfare","₱7,800","Approved"],["REQ-2026-012","Community Outreach","₱12,500","Returned"]]} admin/></>}</>;
+}
+
+function Toolbar(){return <div className="toolbar"><div className="search"><Search/><input placeholder="Search reference, member, or description"/></div><button className="secondary-button"><Filter size={17}/> Filters</button><select aria-label="Status"><option>All statuses</option><option>For review</option><option>Approved</option></select></div>}
+function DataPanel({ title, rows, admin=false }: { title: string; rows: string[][]; admin?: boolean }) { return <section className="panel"><div className="panel-title"><div><h2>{title}</h2><p>Realistic anonymized local demonstration data</p></div><button className="link-button">View all <ArrowRight size={15}/></button></div><div className="table-wrap"><table><thead><tr>{["Reference / Date","Name / Description","Type / Amount","Status","Action"].map(x=><th key={x}>{x}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j}>{j === r.length-1 ? <span className={`status ${c.toLowerCase().replaceAll(" ", "-")}`}>{c}</span> : c}</td>)}<td><button className="row-action">{admin ? "Review" : "View"}<ChevronRight size={15}/></button></td></tr>)}</tbody></table></div></section>}
+function ProgressPanel({title,current,total,percent}:{title:string;current:string;total:string;percent:number}){return <section className="panel progress-panel"><div className="panel-title"><div><h2>{title}</h2><p>Cooperative aggregate</p></div><b>{percent}%</b></div><div className="progress"><i style={{width:`${percent}%`}}/></div><div className="progress-label"><strong>{current}</strong><span>{total}</span></div><div className="mini-bars">{[62,80,48,72,88,75].map((x,i)=><i key={i} style={{height:`${x}%`}}/>)}</div></section>}
+function Activity({admin=false}:{admin?:boolean}){return <section className="panel"><div className="panel-title"><div><h2>{admin?"Action required":"Recent activity"}</h2><p>{admin?"Work assigned to your role":"Your latest cooperative records"}</p></div></div><div className="activity-list">{(admin?["Review liquidation LIQ-2026-014","Verify contribution CON-2026-0041","Review membership MEM-2026-019"]:["Contribution posted · ₱500","Share capital added · ₱3,000","Q1 fund report published"]).map((x,i)=><div key={x}><span><CheckCircle2/></span><p><b>{x}</b><small>{i+1} day{i?"s":""} ago</small></p><ChevronRight/></div>)}</div></section>}
+function FundView({detail}:{detail:boolean}){return <><div className="metrics"><Metric label="Approved budget" value={detail?"₱250,000":"₱1,250,000"}/><Metric label="Utilized" value={detail?"₱180,900":"₱940,500"} tone="blue"/><Metric label="Remaining" value={detail?"₱69,100":"₱309,500"} tone="orange"/></div><ProgressPanel title={detail?"Teacher Development Program":"2026 fund utilization"} current="75.2% utilized" total="Published aggregate" percent={75.2}/><DataPanel title={detail?"Liquidation batches":"Published projects"} rows={[["Teacher Development","Training program","₱180,900","Ongoing"],["Member Welfare","Member services","₱310,000","Ongoing"],["Community Outreach","Community program","₱220,000","Published"]]}/><p className="privacy-banner"><ShieldCheck/> Personal information and sensitive receipt details are redacted.</p></>}
+function Documents(){return <><Toolbar/><DataPanel title="Authorized member documents" rows={[["Apr 10, 2026","Q1 Financial Summary","PDF · 1.2 MB","All Members"],["Mar 20, 2026","2025 Audited Financial Statements","PDF · 4.8 MB","All Members"],["Mar 15, 2026","General Assembly Resolution 2026-03","PDF · 512 KB","All Members"]]}/></>}
+function Meetings({admin=false}:{admin?:boolean}){return <><div className="meeting-card"><div><span className="status approved">Upcoming</span><h2>Annual General Assembly</h2><p><CalendarDays/> March 28, 2026 · 9:00 AM</p><p>Ladtemco Hall, Languyan District</p></div><button className="primary-button small">{admin?"Manage meeting":"View agenda"}</button></div><DataPanel title={admin?"Resolution and document register":"Past meetings and resolutions"} rows={[["R-2026-001","Approval of annual operating plan","Mar 28, 2026","Published"],["R-2025-004","Audited financial statements","Nov 15, 2025","Published"]]} admin={admin}/></>}
+function Profile(){return <div className="settings-grid"><section className="panel"><h2>Maria S. Dela Cruz</h2><span className="status approved">Active Member</span><dl><dt>Member ID</dt><dd>LAD-0241</dd><dt>Date joined</dt><dd>June 12, 2019</dd><dt>Registered email</dt><dd>m••••••@gmail.com</dd><dt>Mobile</dt><dd>+63 9•• ••• 4521</dd></dl></section><section className="panel"><h2>Security</h2><button className="secondary-button">Change password</button><button className="secondary-button">Sign out other sessions</button><p className="privacy-banner"><LockKeyhole/> Legal identity changes require office verification.</p></section></div>}
+function Reports(){return <><div className="metrics"><Metric label="Trial balance" value="Balanced" icon={Check}/><Metric label="Collections" value="₱2,435,750" tone="blue"/><Metric label="Unreconciled" value="3 items" tone="orange" icon={AlertTriangle}/></div><DataPanel title="Financial reports" rows={[["Jan 2026","Statement of Financial Condition","PDF / Excel","Ready"],["Jan 2026","Statement of Operations","PDF / Excel","Ready"],["Jan 2026","Liquidation Aging","PDF / Excel","Review"]]} admin/></>}
+function AuditTrail(){return <section className="panel audit-card"><span className="status approved">Immutable</span><h2>AT-2026-00451</h2><p>Verified contribution · CON-2026-1210-0241</p><div className="timeline"><div><Check/>Submitted</div><div><Check/>Verified</div><div><History/>Reversed</div><div><Check/>Corrected</div></div><dl><dt>Actor</dt><dd>Ana R. Santos · Treasurer</dd><dt>Timestamp</dt><dd>Jan 15, 2026 · 2:36 PM</dd><dt>Evidence hash</dt><dd>3e7f0d5b7e34a…f7e9d1</dd></dl></section>}
+function UsersRoles(){return <><Toolbar/><DataPanel title="Individual user accounts" rows={[["Ana R. Santos","Treasurer","MFA on","Active"],["Jose Ramos","Cashier","MFA on","Active"],["Elena Reyes","Audit Committee","MFA on","Active"],["Ramon Alcantara","Board Approver","MFA on","Invited"]]} admin/><p className="warning-banner"><AlertTriangle/> Conflicting roles are blocked. Shared administrative accounts are not permitted.</p></>}
+function SettingsView(){return <div className="settings-grid">{["Cooperative Profile","Fiscal & Accounting","Contribution Rules","Receipt Numbering","Notifications","Security","Data Retention","Backup & Restore"].map((x,i)=><section className="panel setting-card" key={x}><span>{i<4?<FileText/>:<ShieldCheck/>}</span><div><h2>{x}</h2><p>{i===1?"PHP · Asia/Manila · Calendar year":"Configured for local demonstration"}</p></div><ChevronRight/></section>)}<p className="warning-banner"><AlertTriangle/> Sensitive changes require a reason, confirmation, and audit entry. Restore requires dual authorization.</p></div>}

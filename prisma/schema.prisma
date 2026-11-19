@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum UserRole {
+  MEMBER
+  MEMBERSHIP_STAFF
+  CASHIER
+  TREASURER
+  BOOKKEEPER
+  AUDIT_COMMITTEE
+  BOARD_APPROVER
+  SYSTEM_ADMIN
+}
+
+enum RecordStatus {
+  DRAFT
+  FOR_REVIEW
+  POSTED
+  RETURNED
+  REJECTED
+  REVERSED
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  displayName  String
+  role         UserRole     @default(MEMBER)
+  active       Boolean      @default(true)
+  member       Member?
+  auditEvents  AuditEvent[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  @@index([role, active])
+}
+
+model Member {
+  id              String             @id @default(cuid())
+  memberNumber    String             @unique
+  userId          String             @unique
+  user            User               @relation(fields: [userId], references: [id])
+  joinedAt        DateTime
+  shareCapital    Int                @default(0)
+  contributions   Contribution[]
+  shareEntries    ShareTransaction[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  deletedAt       DateTime?
+
+  @@index([joinedAt])
+}
+
+model Contribution {
+  id             String       @id @default(cuid())
+  reference      String       @unique
+  memberId       String
+  member         Member       @relation(fields: [memberId], references: [id])
+  amountCentavos Int
+  contributionAt DateTime
+  status         RecordStatus @default(DRAFT)
+  receiptNumber  String?      @unique
+  reversedById   String?
+  reversedBy     Contribution? @relation("ContributionReversal", fields: [reversedById], references: [id])
+  reversals      Contribution[] @relation("ContributionReversal")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([memberId, contributionAt])
+  @@index([status, contributionAt])
+}
+
+model ShareTransaction {
+  id          String   @id @default(cuid())
+  reference   String   @unique
+  memberId    String
+  member      Member   @relation(fields: [memberId], references: [id])
+  amountCentavos Int
+  shares      Int
+  postedAt    DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([memberId, postedAt])
+}
+
+model Fund {
+  id                String   @id @default(cuid())
+  code              String   @unique
+  name              String
+  approvedCentavos  Int
+  utilizedCentavos  Int
+  status            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model AuditEvent {
+  id          String   @id @default(cuid())
+  eventCode   String   @unique
+  actorId     String
+  actor       User     @relation(fields: [actorId], references: [id])
+  action      String
+  entityType  String
+  entityId    String
+  occurredAt  DateTime @default(now())
+  metadata    String
+
+  @@index([actorId, occurredAt])
+  @@index([entityType, entityId, occurredAt])
+}
