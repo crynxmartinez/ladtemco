@@ -8,11 +8,12 @@ function announce(message){
   region.hidden=false;
   clearTimeout(noticeTimer);noticeTimer=setTimeout(()=>{region.hidden=true;},4500);
 }
-function showDialog(title,kicker,body,buttons=''){
+function showDialog(title,kicker,body,buttons='',compact=false){
   const wasOpen=dialog.open;
   if(!wasOpen)returnFocus=document.activeElement;
   dialog.querySelector('h2').textContent=title;
   dialog.querySelector('.kicker').textContent=kicker;
+  dialog.dataset.size=compact?'compact':'wide';
   dialogBody.innerHTML=body;
   dialogBody.scrollTop=0;
   dialogFooter.innerHTML=action('Close','close')+buttons;
@@ -32,15 +33,15 @@ function showPayment(id){
   const r=find(contributions,id);
   if(!r)return;
   showDialog(r.receipt?'Contribution receipt':'Payment details',r.id,
-    pill(r.status,r.status==='Posted'?'green':r.status==='Reversed'?'red':'amber')+
-    `<p class="amount">${money(r.amount)}</p>`+facts([['Member',member.name],['Member ID',member.id],['Payment date',dateLabel(r.date)],['Category','Monthly dues'],['Receipt',r.receipt||'Unavailable']])+
+    modalAmount('Monthly dues',money(r.amount),pill(r.status,r.status==='Posted'?'green':r.status==='Reversed'?'red':'amber'))+
+    modalSplit(facts([['Payment date',dateLabel(r.date)],['Receipt',r.receipt||'Unavailable']]),'Membership',facts([['Member',member.name],['Member ID',member.id]]))+
     (r.note?note(r.note):''),r.receipt?action('Download receipt','receipt-pdf',id,'Download',true):'');
 }
 function showCapital(id){
   const r=find(capital,id);
   if(!r)return;
   const balance=openingCapital+sum(capital.filter(x=>x.date<=r.date),'amount');
-  showDialog(r.label,id,pill('Posted')+`<p class="amount">${money(r.amount)}</p>`+facts([['Member ID',member.id],['Date',dateLabel(r.date)],['Shares added',r.amount/member.par],['Paid-up balance after posting',money(balance)]]),action('Capital statement','capital-statement','','Download',true));
+  showDialog(r.label,id,modalStats([['Posted amount',money(r.amount)],['Shares added',r.amount/member.par],['Paid-up after posting',money(balance),'emphasis']])+facts([['Member ID',member.id],['Date posted',dateLabel(r.date)]]),action('Capital statement','capital-statement','','Download',true));
 }
 function showFund(id){
   const f=find(funds,id);if(!f)return;
@@ -52,13 +53,15 @@ function showProject(id){
   const p=find(projects,id);if(!p)return;
   const f=find(funds,p.fund);
   let body=pill(p.status,p.status==='Closed'?'green':'amber')+`<p class="meeting-info">${p.summary}</p>`+facts([['Funding source',f.name],['Published',dateLabel(p.date)],['Advance released',money(p.released)]]);
-  if(p.status==='Closed')body+=`<h3>Verified liquidation</h3>`+facts([...p.items.map(([label,n])=>[label,money(n)]),['Total supported spending',money(p.spent)],['Cash returned',money(p.returned)],['Unaccounted',money(p.released-p.spent-p.returned)]]);
+  if(p.status==='Closed')body=modalStats([['Advance released',money(p.released)],['Supported spending',money(p.spent)],['Cash returned',money(p.returned),'emphasis']])+
+    modalSplit(`<h3>Verified liquidation</h3><p class="meeting-info">${p.summary}</p>`+facts(p.items.map(([label,n])=>[label,money(n)])),'Publication details',
+      pill(p.status)+facts([['Funding source',f.name],['Published',dateLabel(p.date)],['Unaccounted',money(p.released-p.spent-p.returned)]]));
   showDialog(p.name,id,body,action('View fund','fund',f.id)+(p.document?action('Read published summary','document',p.document,'FileText',true):''));
 }
 function showDocument(id){
   const d=docFor(id);if(!d)return;
-  showDialog(d.title,d.id,facts([['Published',dateLabel(d.date)],['Audience','All members'],['Document type',d.type]])+
-    `<article class="paper"><span class="paper-mark">LADTEMCO</span>${d.lines.map(l=>`<p>${escapeText(l)}</p>`).join('')}</article>`,action('Download PDF','document-pdf',id,'Download',true));
+  showDialog(d.title,d.id,modalSplit(`<article class="paper"><span class="paper-mark">LADTEMCO</span>${d.lines.map(l=>`<p>${escapeText(l)}</p>`).join('')}</article>`,'Publication details',
+    facts([['Published',dateLabel(d.date)],['Audience','All members'],['Document type',d.type]])),action('Download PDF','document-pdf',id,'Download',true));
 }
 function agenda(){
   showDialog(meeting.name,'Member meeting',facts([['Date',dateLabel(meeting.date)],['Time',meeting.time],['Location',meeting.venue],['My response',preferences.rsvp]])+
@@ -68,7 +71,7 @@ function agenda(){
 function rsvp(){
   const options=['Attending','Unable to attend','Undecided'];
   showDialog('My attendance',meeting.name,`<form id="rsvp-form"><label class="field"><span>Response for ${dateLabel(meeting.date)}</span><select name="response" required>${preferences.rsvp==='No response'?'<option value="">Choose a response</option>':''}${options.map(o=>`<option ${preferences.rsvp===o?'selected':''}>${o}</option>`).join('')}</select></label></form>`,
-    '<button class="button primary" type="submit" form="rsvp-form">Save response</button>');
+    '<button class="button primary" type="submit" form="rsvp-form">Save response</button>',true);
 }
 function editContact(){
   showDialog('Edit contact details',member.id,`<form id="contact-form"><label class="field"><span>Email</span><input name="email" type="email" autocomplete="off" required maxlength="120" value="${escapeText(preferences.email)}"></label>
@@ -108,7 +111,7 @@ const commands={
   close:closeDialog,payment:showPayment,capital:showCapital,fund:showFund,project:showProject,document:showDocument,agenda,respond:rsvp,'edit-contact':editContact,sessions,reset,notifications,
   'receipt-pdf':receiptPDF,'document-pdf':documentPDF,'capital-statement':capitalPDF,'statement-pdf':statementPDF,export:exportPayments,calendar:calendarFile,
   statement:()=>showDialog('My membership statement',member.id,facts([['Member',member.name],['Statement date','November 20, 2026'],['Posted contributions',money(postedTotal)],['Paid-up capital',money(paidCapital)],['2025 patronage allocation',money(2140)]]),action('Download statement','statement-pdf','','Download',true)),
-  'confirm-session':()=>showDialog('Sign out the other device?','Demo session','<p class="lead">Your other sample device will show as signed out. Your current session stays active.</p>',action('Confirm sign-out','end-session','','',true)),
+  'confirm-session':()=>showDialog('Sign out the other device?','Demo session',facts([['Other demo device','Will be signed out'],['This device','Current session continues']]),action('Confirm sign-out','end-session','','',true),true),
   'end-session':()=>applyChange({otherSession:false},'Other demo device signed out.'),
   'save-reset':()=>applyChange({resetRequested:true},'Demo reset request recorded.'),
   notice:id=>{const n=find(notices,id);if(!n)return;savePreferences({read:[...new Set([...preferences.read,id])]});updateBell();commands[n.action](n.key);},

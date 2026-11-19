@@ -7,8 +7,8 @@ const out=path.resolve(src,publish?'../../public/admin-demo':'../Improved Admin 
 await fs.mkdir(out,{recursive:true});
 const read=filename=>fs.readFile(path.join(src,filename),'utf8');
 const logo=await fs.readFile(path.resolve(src,'../../public/logo.jpg'));
-const styles=(await Promise.all(['preview.css','admin-interactions.css'].map(read))).join('\n');
-const files=['preview-icons.js','preview.js','admin-data.js','admin-actions.js','admin-forms.js','admin-panels.js','admin-controls.js'];
+const styles=(await Promise.all(['preview.css','admin-interactions.css','../shared/modal-layout.css'].map(read))).join('\n');
+const files=['preview-icons.js','../shared/modal-layout.js','preview.js','admin-data.js','admin-actions.js','admin-forms.js','admin-panels.js','admin-controls.js'];
 const scripts=(await Promise.all(files.map(read))).join('\n').replace('../../public/logo.jpg','data:image/jpeg;base64,'+logo.toString('base64'));
 const base=`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ladtemco · Admin demo</title><style>${styles}</style></head><body><div id="app"></div><script>${scripts}</script>`;
 const client=base+'</body></html>';

@@ -18,7 +18,7 @@ function closeDialog(){
 function dialog(title,context,body,buttons=[],opts={}){
   if(!modalHost.firstChild) onCloseFocus=document.activeElement;
   dialogReturn=opts.back;
-  modalHost.innerHTML=`<div class="scrim"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+  modalHost.innerHTML=`<div class="scrim"><section class="dialog" data-size="${opts.compact?'compact':'wide'}" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
     <header><div><div class="kicker">${esc(context)}</div><h2 id="dialog-title">${esc(title)}</h2></div><button class="close-x" aria-label="Close dialog" type="button">×</button></header>
     <div class="dialog-body">${body}</div>
     <footer><button class="button dismiss" type="button">${opts.back?'Back':buttons.length?'Cancel':'Done'}</button>${buttons.map((b,i)=>`<button class="button ${b.primary?'primary':''}" data-command="${i}" type="button">${esc(b.label)}</button>`).join('')}</footer>
@@ -50,7 +50,7 @@ function audit(event,reference,reason,before='—',after=event){
 }
 function committed(title,reference,message){
   const saved=persist();render();closeDialog();
-  dialog(title,saved?'LOCAL DEMO · SAVED':'LOCAL DEMO · SESSION ONLY',`<div class="result-icon">${icon('CheckCircle2')}</div><p class="lead">${esc(message)}</p>${kv([['Reference',reference],['Saved to',saved?'This demo on this device':'This open session only']])}`);
+  dialog(title,saved?'LOCAL DEMO · SAVED':'LOCAL DEMO · SESSION ONLY',`<div class="result-icon">${icon('CheckCircle2')}</div><p class="lead">${esc(message)}</p>${kv([['Reference',reference],['Saved to',saved?'This demo on this device':'This open session only']])}`,[],{compact:true});
 }
 function changeStatus(key,r,status,reason){
   const col=statusColumn[key],before=r.values[col];r.values[col]=status;
@@ -86,7 +86,8 @@ function csvBlob(rows){
 function exportRegister(page){
   const {key,rows}=visibleTable(page), filename=`ladtemco-${key}.csv`;
   dialog('Export '+(page==='audit-trail'?'events':page==='funds'?'balances':'register'),screens[page].title,
-    `<p class="lead">Download the records in the current view.</p>${kv([['File',filename],['Rows',rows.length],['Format','CSV · spreadsheet compatible']])}`,
+    modalSplit(sub('Included records',rows.length?miniTable(['Reference',registerInfo[key].headers[0]],rows.slice(0,4).map(r=>[r.id,r.values[0]])):'<p>No records match the current filters.</p>')+
+      (rows.length>4?`<p class="lead">Showing the first 4 of ${rows.length} records.</p>`:''),'Export file',kv([['File',filename],['Rows in export',rows.length],['Format','CSV · spreadsheet compatible']])),
     [textButton('Download CSV',()=>{saveFile(filename,csvBlob([['Reference',...registerInfo[key].headers],...rows.map(r=>[r.id,...r.values])]));closeDialog();notify('CSV downloaded.');},true)]);
 }
 function review(key,r){
@@ -95,10 +96,19 @@ function review(key,r){
   let body=kv(defaultRows(key,r));
   if(key==='liquidations'){
     const lines=r.extra.lines||liquidEvidence;
-    body=sub('Supporting evidence',miniTable(['Evidence','Reference','Amount'],lines))+
-      kv([['Released',r.values[2]],['Accounted for',peso(lines.reduce((a,row)=>a+valueOfMoney(row[2]),0))],['Difference',peso(valueOfMoney(r.values[2])-lines.reduce((a,row)=>a+valueOfMoney(row[2]),0))]]);
+    const accounted=lines.reduce((a,row)=>a+valueOfMoney(row[2]),0);
+    const difference=valueOfMoney(r.values[2])-accounted;
+    body=modalStats([['Advance released',r.values[2]],['Accounted for',peso(accounted)],['Difference',peso(difference),difference?'attention':'emphasis']])+
+      modalSplit(sub('Supporting evidence',miniTable(['Evidence','Reference','Amount'],lines)),'Advance details',
+        kv([['Project',r.values[0]],['Advance',r.values[1]],['Due',r.values[3]],['Status',r.values[4]]]));
   }
-  if(key==='contributions') body+=sub('Payment evidence',kv([['Receipt reference',r.extra['Receipt reference']||'OR-1041'],['Received from',r.values[1]],['Amount on receipt',r.values[3]]]));
+  if(key==='contributions')body=modalAmount('Payment to verify',r.values[3],badge(esc(r.values[4]),'amber'))+
+    modalSplit(sub('Payment evidence',kv([['Receipt reference',r.extra['Receipt reference']||'OR-1041'],['Amount on receipt',r.values[3]]])),'Payment details',
+      kv([['Received from',r.values[1]],['Category',r.values[2]],['Payment date',r.values[0]]]));
+  if(key==='expenses'){
+    const fund=demo.tables.funds.find(f=>f.values[0]===r.values[2]);
+    if(fund)body=modalStats([['Requested',r.values[3]],['Available in fund',fund.values[3]],['After release',peso(valueOfMoney(fund.values[3])-valueOfMoney(r.values[3])),'emphasis']])+body;
+  }
   const signOff=()=>{
     if(key==='members') { r.values[1]=dateText(demoDay);r.values[3]='₱0'; }
     changeStatus(key,r,valid,`${r.values[0]} was reviewed and marked ${valid.toLowerCase()}.`);
@@ -120,7 +130,8 @@ function detail(key,r){
   const buttons=[];
   let title=r.values[0],body=kv(defaultRows(key,r));
   if(key==='members'){
-    title='Member record';body=sub(r.values[0],body);
+    title='Member record';body=modalAmount('Member',r.values[0],badge(esc(r.values[2]),r.values[2]==='Active'?'green':'amber'))+
+      kv([['Member reference',r.id],['Joined',r.values[1]],['Share capital',r.values[3]],...(r.extra.Email?[['Contact email',r.extra.Email]]:[])]);
     if(r.values[2]==='Pending review') buttons.push(textButton('Review application',()=>review(key,r),true));
     if(byId('share-capital',r.id)) buttons.push(textButton('Open capital ledger',()=>detail('share-capital',byId('share-capital',r.id)),true));
   } else if(key==='contributions'){
@@ -130,7 +141,7 @@ function detail(key,r){
   } else if(key==='share-capital'){
     title='Member capital ledger';body+=sub('Recent transactions',miniTable(['Date','Amount','Reference'],demo.tables.transactions.filter(x=>x.values[1]===r.values[0]).map(x=>[x.values[2],x.values[3],x.id])));
   } else if(key==='funds'){
-    title='Fund balance';body+=sub('Linked requests',miniTable(['Purpose','Amount','Status'],demo.tables.expenses.filter(x=>x.values[2]===r.values[0]).map(x=>[x.values[0],x.values[3],x.values[4]])));
+    title='Fund balance';body=modalStats([['Approved budget',r.values[1]],['Amount used',r.values[2]],['Available',r.values[3],'emphasis']])+sub(esc(r.values[0]),kv([['Fund reference',r.id],['Budget utilized',r.values[4]]]))+sub('Linked requests',miniTable(['Purpose','Amount','Status'],demo.tables.expenses.filter(x=>x.values[2]===r.values[0]).map(x=>[x.values[0],x.values[3],x.values[4]])));
   } else if(key==='expenses'){
     if(r.values[4]==='For approval')return review(key,r);
     const liq=demo.tables.liquidations.find(x=>x.values[1]===r.id);
@@ -146,7 +157,7 @@ function detail(key,r){
     if(r.values[4]==='For verification')return review(key,r);
     title='Liquidation record';body+=note(esc(r.extra.correction||(r.values[4]==='Closed'?'Verification completed. The advance is closed.':'The preparer must correct the evidence references.')),r.values[4]==='Closed'?'green':'amber');
   } else if(key==='reports'){
-    title=r.values[0];body=kv([['Period',r.values[1]],['Status',r.values[3]]])+sub('Report preview',reportContent(title));
+    title=r.values[0];body=modalSplit(sub('Report preview',reportContent(title)),'Report details',kv([['Period',r.values[1]],['Status',r.values[3]],['Download format','CSV']]));
     buttons.push(textButton('Download report',()=>{
       const el=document.createElement('div');el.innerHTML=reportContent(r.values[0]);
       const rows=[...el.querySelectorAll('tr,dl>div')].map(row=>[...row.children].map(c=>c.textContent));
@@ -164,7 +175,8 @@ function detail(key,r){
     if(r.extra.content)buttons.push(textButton('Download attachment',async()=>{const blob=await (await fetch(r.extra.content)).blob();saveFile(r.extra.filename,blob);notify('Attachment downloaded.');},true));
   } else if(key==='audit-trail'){
     title='Audit event';const seed={'AT-2026-00451':['₱550','₱500','Corrected the amount to match the original receipt.'],'AT-2026-00450':['Draft','For verification','Submitted receipts and the cash return slip.'],'AT-2026-00449':['Draft','Published','Released audited financial statements to the member portal.']}[r.id]||[];
-    body+=sub('Change recorded',kv([['Before',r.extra.before||seed[0]],['After',r.extra.after||seed[1]],['Reason',r.extra.reason||seed[2]]]));
+    body=modalStats([['Before',r.extra.before||seed[0]],['After',r.extra.after||seed[1],'emphasis'],['Event',r.values[1]]])+
+      modalSplit(sub('Reason for change',`<p>${esc(r.extra.reason||seed[2])}</p>`),'Recorded event',kv([['Actor',r.values[3]],['Record',r.values[2]],['Time',r.values[0]]]));
   } else if(key==='users-roles'){
     title=r.values[3]==='Invited'?'Staff invitation':'Staff account';
     body+=sub('Effective permissions',`<ul>${(permissionSets[r.values[1]]||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`);

@@ -19,10 +19,27 @@ function formDialog(title,context,fields,submit,onSubmit,{initial={},description
       const numeric=['money','integer','nonnegative'].includes(type);
       control=`<input type="${numeric?'number':type}" name="${name}" value="${esc(value)}" ${numeric?`min="${type==='nonnegative'?0:type==='integer'?1:.01}" max="999999999" step="${type==='integer'?1:'.01'}"`:'maxlength="120"'} placeholder="${esc(example||'')}" required>`;
     }
-    return `<label class="field"><span>${name}</span>${control}</label>`;
+    return `<label class="field${['long','file','advance'].includes(type)?' wide-field':''}"><span>${name}</span>${control}</label>`;
   }).join('');
   dialog(title,context,`<p class="form-intro">${esc(description)}</p><form id="record-form">${inputs}<p role="alert" class="form-error" hidden></p></form>`,[textButton(submit,()=>modalHost.querySelector('form').requestSubmit(),true)],{back});
   const form=modalHost.querySelector('form'),error=form.querySelector('[role=alert]');
+  if(title==='Start liquidation'||title==='Record capital payment'){
+    const summary=document.createElement('output');
+    summary.className='form-summary';
+    form.insertBefore(summary,error);
+    const update=()=>{
+      const v=Object.fromEntries(new FormData(form));
+      const advance=title==='Start liquidation';
+      const row=advance?byId('expenses',v['Released advance']):byId('share-capital',v.Member);
+      if(!row){summary.textContent=advance?'No released advances are available.':'No outstanding capital balances.';return;}
+      const balance=valueOfMoney(row.values[3]);
+      const applied=advance?Number(v['Supported spending'])+Number(v['Cash returned']):Number(v['Amount received']);
+      const remaining=Math.round((balance-applied)*100)/100;
+      summary.dataset.warning=String(remaining<0);
+      summary.textContent=(advance?'Cash released ':'Outstanding balance ')+peso(balance)+' · '+(advance?'Still to account for ':'Balance after payment ')+peso(remaining);
+    };
+    form.addEventListener('input',update);update();
+  }
   form.onsubmit=async e=>{
     e.preventDefault();
     const values=Object.fromEntries(new FormData(form));
